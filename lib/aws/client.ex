@@ -6,6 +6,7 @@ defmodule AWS.Client do
     :endpoint,
     proto: "https",
     port: 443,
-    credential: nil
+    credentials: nil,
+    user_pool_id: ""
   ]
 end
