@@ -1,12 +1,24 @@
 defmodule AWS.Cognito do
   def get_credentials_for_identity(client, identity_id) do
-    request(client, "GetCredentialsForIdentity", %{ IdentityId: identity_id })
+    request(client, "/", "GetCredentialsForIdentity", %{ IdentityId: identity_id }) |> send_request(client)
   end
 
-  defp request(client, action, input, options \\ []) do
-    headers = [{"Content-Type", "application/x-amz-json-1.1"}, {"X-Amz-Target", "AWSCognitoIdentityService.#{action}"}]
+  defp request(client, path, action, payload) do
+    %AWS.Request{
+      service: "cognito-identity",
+      host: "cognito-identity.#{client.region}.#{client.endpoint}",
+      path: path,
+      method: :post,
+      headers: [
+        {"Content-Type", "application/x-amz-json-1.1"},
+        {"X-Amz-Target", "AWSCognitoIdentityService.#{action}"}
+      ],
+      payload: payload
+    }
+  end
 
-    case AWS.request(client, "/", "cognito-identity", action, :post, headers, input, options) do
+  defp send_request(request, client, options \\ []) do
+    case AWS.request(client, request, options) do
       {:ok, response=%HTTPoison.Response{status_code: 200, body: ""}} ->
         {:ok, nil, response}
       {:ok, response=%HTTPoison.Response{status_code: 200, body: body}} ->
