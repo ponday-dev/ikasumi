@@ -13,6 +13,13 @@ defmodule AWS.Request.Signer do
       { "x-amz-date", amz_datetime },
       { "x-amz-content-sha256", encoded_request.payload }
       | encoded_request.headers ]
+    headers = if !is_nil(client.credentials) do
+      [{"x-amz-security-token", Map.get(client.credentials, "SessionToken")} | headers]
+    else
+      headers
+    end
+
+    encoded_request = %{encoded_request | headers: headers}
     hashed_request = Internal.canonical_request(encoded_request)
     credential_scope = Internal.credential_scope(amz_datetime, client.region, encoded_request.service)
 
