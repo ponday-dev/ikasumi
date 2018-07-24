@@ -5,7 +5,7 @@ defmodule AWS.Cognito do
   def get_credentials_for_identity(client, identity_id, id_token) do
     payload = %{
       IdentityId: identity_id,
-      Logins: % {
+      Logins: %{
         "cognito-identity.#{client.region}.#{client.endpoint}/#{client.user_pool_id}" => id_token
       }
     }

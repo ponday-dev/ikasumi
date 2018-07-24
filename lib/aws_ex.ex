@@ -13,7 +13,7 @@ defmodule AWS do
   end
 
   def get_credentials(client, identity_id) do
-    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(identity_id) do
+    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, identity_id) do
       %{client |
         access_key: Map.get(credentials, "AccessKeyId"),
         secret_access_key: Map.get(credentials, "SecretKey"),
