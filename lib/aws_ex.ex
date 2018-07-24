@@ -1,19 +1,14 @@
 defmodule AWS do
-  alias AWS.Client
-  alias AWS.Request
-  def request(client, url, service, action, method, headers, input, options \\ []) do
-    client = %{client | service: service}
-    host = get_host(client, service)
-    url = get_url(client, host, url)
-    headers = Enum.concat([{"Host", host}], headers)
-    {:ok, payload} = if input != nil, do: Poison.encode(input), else: ""
+  alias AWS.{Client, Request}
+  alias AWS.Request.Signer
 
-    headers = Request.sign_v4(client, method, url, [], headers, payload)
+  def request(%Client{} = client, %Request{} = request, options \\ []) do
+    request = request
+    |> Request.encode!(:payload)
+    |> Signer.sign_v4(client)
 
-    HTTPoison.request(method, url, payload, headers, options)
+    url = Request.url(client, request)
+    url = if length(request.query_params) >= 1, do: url <> "?" <> URI.encode_query(request.query_params), else: url
+    HTTPoison.request(request.method, url, request.payload, request.headers, options)
   end
-  defp get_host(%Client{} = client, prefix),
-    do: if client.region == "local", do: "localhost", else: "#{prefix}.#{client.region}.#{client.endpoint}"
-
-  defp get_url(client, host, url), do: "#{client.proto}://#{host}:#{client.port}#{url}"
 end
