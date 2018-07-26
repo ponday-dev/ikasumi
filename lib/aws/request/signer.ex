@@ -3,32 +3,88 @@ defmodule AWS.Request.Signer do
   alias AWS.Request.Signer.Internal
   import AWS.Util, only: [to_amz_datetime: 1, hash: 1, hex_encode: 1]
 
-  def sign_v4(%Request{} = request, %Client{} = client), do: sign_v4(request, client, Timex.now())
-  def sign_v4(%Request{} = request, %Client{} = client, datetime) do
+  def sign_v4(%Request{} = request, %Client{} = client, options \\ []), do: sign_v4(request, client, Timex.now(), options)
+  def sign_v4(%Request{} = request, %Client{} = client, datetime, options) do
     amz_datetime = to_amz_datetime(datetime)
 
-    encoded_request = %{request | payload: request.payload |> hash() |> hex_encode()}
+    request_for_sign = if options[:hashed] do
+      %{request | payload: request.payload |> hash() |> hex_encode() }
+    else
+      request
+    end
     headers = [
-      { "host", encoded_request.host },
-      { "x-amz-date", amz_datetime },
-      { "x-amz-content-sha256", encoded_request.payload }
-      | encoded_request.headers ]
+      { "host", request_for_sign.host },
+      { "x-amz-date", amz_datetime }
+      | request_for_sign.headers ]
     headers = if !is_nil(client.credentials) do
       [{"x-amz-security-token", Map.get(client.credentials, "SessionToken")} | headers]
     else
       headers
     end
 
-    encoded_request = %{encoded_request | headers: headers}
-    hashed_request = Internal.canonical_request(encoded_request)
-    credential_scope = Internal.credential_scope(amz_datetime, client.region, encoded_request.service)
+    request_for_sign = %{request_for_sign | headers: headers}
+    hashed_request = Internal.canonical_request(request_for_sign)
+    credential_scope = Internal.credential_scope(amz_datetime, client.region, request_for_sign.service)
 
-    signing_key = Internal.calc_signing_key(client.secret_access_key, amz_datetime, client.region, encoded_request.service)
+    signing_key = Internal.calc_signing_key(client.secret_access_key, amz_datetime, client.region, request_for_sign.service)
     string_to_sign = Internal.string_to_sign(amz_datetime, credential_scope, hashed_request)
     signature = Internal.calc_signature(signing_key, string_to_sign)
     authorization = Internal.authorization_header(client.access_key, credential_scope, headers, signature)
 
-    %{request | headers: [{ "Authorization", authorization } | headers]}
+    request = %{request | headers: [{ "Authorization", authorization } | headers]}
+    if options[:signature], do: {signature, request}, else: request
+  end
+end
+
+defmodule AWS.Request.Signer.Multi do
+  alias AWS.{Client, Request}
+  alias AWS.Request.Signer.Internal
+  import AWS.Util, only: [to_amz_datetime: 1, hash: 1, hex_encode: 1]
+
+  def sign_v4(%Request{} = request, %Client{} = client, prev_signature, options \\ []), do: sign_v4(request, client, Timex.now(), options)
+  def sign_v4(%Request{} = request, %Client{} = client, prev_signature, datetime, options) do
+    amz_datetime = to_amz_datetime(datetime)
+
+    request_for_sign = if options[:hashed] do
+      %{request | payload: request.payload |> hash() |> hex_encode() }
+    else
+      request
+    end
+    headers = [
+      { "host", request_for_sign.host },
+      { "x-amz-date", amz_datetime }
+      | request_for_sign.headers ]
+    headers = if !is_nil(client.credentials) do
+      [{"x-amz-security-token", Map.get(client.credentials, "SessionToken")} | headers]
+    else
+      headers
+    end
+
+    request_for_sign = %{request_for_sign | headers: headers}
+    hashed_request = Internal.canonical_request(request_for_sign)
+    credential_scope = Internal.credential_scope(amz_datetime, client.region, request_for_sign.service)
+
+    signing_key = Internal.calc_signing_key(client.secret_access_key, amz_datetime, client.region, request_for_sign.service)
+    string_to_sign = string_to_sign(amz_datetime, credential_scope, hashed_request, prev_signature)
+    signature = Internal.calc_signature(signing_key, string_to_sign)
+    authorization = Internal.authorization_header(client.access_key, credential_scope, headers, signature)
+
+    request = %{request |
+      headers: [{ "Authorization", authorization } | headers],
+      payload: "#{request.payload |> byte_size() |> to_string()};chunk-signature=#{signature}"
+    }
+    {signature, request}
+  end
+
+  def string_to_sign(datetime, scope, hashed_request, prev_signature) do
+    Enum.join([
+      "AWS4-HMAC-SHA256-PAYLOAD",
+      datetime,
+      scope,
+      prev_signature,
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      hashed_request
+      ], "\n")
   end
 end
 

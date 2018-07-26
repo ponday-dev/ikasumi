@@ -5,4 +5,6 @@ defmodule AWS.Util do
 
   def to_amz_datetime(datetime), do: Timex.format!(datetime, "{YYYY}{0M}{D}T{h24}{0m}{0s}Z")
   def short_date(datetime), do: String.slice(datetime, 0..7)
+
+  def identity(i), do: i
 end
