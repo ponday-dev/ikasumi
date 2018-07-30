@@ -3,13 +3,8 @@ defmodule AWS do
   alias AWS.Request.Signer
 
   def request(%Request{} = request, %Client{} = client, options \\ []) do
-    # request = request
-    # |> Request.encode!(:payload)
-    # |> Signer.sign_v4(client, hashed: options[:hashed] || false)
-
     url = Request.url(client, request)
     url = if length(request.query_params) >= 1, do: url <> "?" <> URI.encode_query(request.query_params), else: url
-    IO.puts url
     with {:ok, response} <- HTTPoison.request(request.method, url, request.payload, request.headers, options) do
       {:ok, request.parser.(response)}
     end
