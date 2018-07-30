@@ -15,9 +15,7 @@ defmodule AWS.S3 do
       parser: &Parsers.parse_object_acl/1
     }
 
-    request
-    |> AWS.sign_v4(client)
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   def upload(client, filepath, bucket, object) do
@@ -43,9 +41,7 @@ defmodule AWS.S3 do
       payload: "",
       parser: &Parsers.parse_initiate_multipart_upload/1
     }
-    request
-    |> AWS.sign_v4(client)
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   def upload_part({src, index}, client, upload_id, bucket, object) do
@@ -68,9 +64,7 @@ defmodule AWS.S3 do
     }
 
 
-    response = request
-    |> AWS.sign_v4(client)
-    |> AWS.request!(client, [timeout: :infinity, recv_timeout: :infinity])
+    response = request |> AWS.request!(client, [timeout: :infinity, recv_timeout: :infinity])
 
     {_, etag} = Enum.find(response.headers, fn {key, _} -> String.downcase(key) == "etag" end)
     {String.slice(etag, 1..-2), index}
@@ -103,9 +97,7 @@ defmodule AWS.S3 do
       payload: payload,
     }
 
-    request
-    |> AWS.sign_v4(client)
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   def file_stream(path, options \\ []), do: File.stream!(path, [], options[:chunk_size] || 5 * 1024 * 1024)
