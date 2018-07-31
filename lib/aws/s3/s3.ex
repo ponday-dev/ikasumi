@@ -1,5 +1,6 @@
 defmodule AWS.S3 do
   alias AWS.S3.Parsers
+  import AWS.Util, only: [slice_as_binary: 2]
 
   def get_object_acl(client, bucket, object) do
     # x-amz-content-sha256ヘッダの値は空文字をSHA256でハッシュ化して16進数化したもの
@@ -18,9 +19,13 @@ defmodule AWS.S3 do
     request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
-  def upload(client, filepath, bucket, object) do
+  def upload(client, mode, src, bucket, object, options \\ []) do
+    get_stream(src, mode, options[:chunk_size] || 5 * 1024 * 1024) |> upload_stream(client, bucket, object)
+  end
+
+  defp upload_stream(enumerable, client, bucket, object) do
     with {:ok, %{body: %{upload_id: upload_id}}} <- initiate_multipart_upload(client, bucket, object) do
-      file_stream(filepath)
+      enumerable
       |> Stream.with_index(1)
       |> Task.async_stream(AWS.S3, :upload_part, [client, upload_id, bucket, object])
       |> Enum.to_list()
@@ -100,5 +105,6 @@ defmodule AWS.S3 do
     request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
-  def file_stream(path, options \\ []), do: File.stream!(path, [], options[:chunk_size] || 5 * 1024 * 1024)
+  defp get_stream(path, :file, chunk_size), do: File.stream!(path, [], chunk_size)
+  defp get_stream(text, :text, chunk_size), do: slice_as_binary(text, chunk_size)
 end
