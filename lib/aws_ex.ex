@@ -22,13 +22,21 @@ defmodule AWS do
     end
   end
 
-  def get_credentials(client, identity_id) do
+  def get_credentials(client, identity_id), do:
     with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, identity_id) do
-      %{client |
-        access_key: Map.get(credentials, "AccessKeyId"),
-        secret_access_key: Map.get(credentials, "SecretKey"),
-        credentials: credentials
-      }
+      update_client(client, credentials)
     end
+  end
+  def get_credentials(client, identity_id, id_token) do
+    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, identity_id, id_token) do
+      update_client(client, credentials)
+    end
+  end
+  defp update_client(client, credentials) do
+    %{client |
+      access_key: Map.get(credentials, "AccessKeyId"),
+      secret_access_key: Map.get(credentials, "SecretKey"),
+      credentials: credentials
+    }
   end
 end
