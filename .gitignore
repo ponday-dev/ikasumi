@@ -24,4 +24,4 @@ aws_ex-*.tar
 
 /data/
 /.elixir_ls/
-
+.DS_Store

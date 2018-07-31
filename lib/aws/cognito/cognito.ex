@@ -1,8 +1,6 @@
 defmodule AWS.Cognito do
   def get_credentials_for_identity(client, identity_id) do
-    request(client, "/", "GetCredentialsForIdentity", %{ IdentityId: identity_id })
-    |> AWS.sign_v4(client)
-    |> send_request(client)
+    request(client, "/", "GetCredentialsForIdentity", %{ IdentityId: identity_id }) |> send_request(client)
   end
   def get_credentials_for_identity(client, identity_id, id_token) do
     payload = %{
@@ -11,9 +9,7 @@ defmodule AWS.Cognito do
         "cognito-identity.#{client.region}.#{client.endpoint}/#{client.user_pool_id}" => id_token
       }
     }
-    request(client, "/", "GetCredentialsForIdentity", payload)
-    |> AWS.sign_v4(client)
-    |> send_request(client)
+    request(client, "/", "GetCredentialsForIdentity", payload) |> send_request(client)
   end
 
   defp request(client, path, action, payload) do

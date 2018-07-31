@@ -10,7 +10,14 @@ defmodule AWS.Request do
     headers: [],
     query_params: [],
     payload: "",
-    parser: &identity/1
+    parser: &identity/1,
+    datetime: nil,
+    hashed_payload: nil,
+    hashed_request: nil,
+    credential_scope: nil,
+    signing_key: nil,
+    string_to_sign: nil,
+    signature: nil
   ]
 
   def url(%Client{} = client, %Request{} = request) do

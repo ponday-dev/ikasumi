@@ -1,5 +1,6 @@
 defmodule AWS.S3 do
   alias AWS.S3.Parsers
+  import AWS.Util, only: [slice_as_binary: 2]
 
   def get_object_acl(client, bucket, object) do
     # x-amz-content-sha256ヘッダの値は空文字をSHA256でハッシュ化して16進数化したもの
@@ -8,9 +9,6 @@ defmodule AWS.S3 do
       host: "#{bucket}.s3.#{client.endpoint}",
       path: object,
       method: :get,
-      headers: [
-        {"x-amz-content-sha256", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
-      ],
       query_params: [
         {"acl", ""}
       ],
@@ -18,14 +16,16 @@ defmodule AWS.S3 do
       parser: &Parsers.parse_object_acl/1
     }
 
-    request
-    |> AWS.sign_v4(client, hashed: true)
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
-  def upload(client, filepath, bucket, object) do
+  def upload(client, mode, src, bucket, object, options \\ []) do
+    get_stream(src, mode, options[:chunk_size] || 5 * 1024 * 1024) |> upload_stream(client, bucket, object)
+  end
+
+  defp upload_stream(enumerable, client, bucket, object) do
     with {:ok, %{body: %{upload_id: upload_id}}} <- initiate_multipart_upload(client, bucket, object) do
-      file_stream(filepath)
+      enumerable
       |> Stream.with_index(1)
       |> Task.async_stream(AWS.S3, :upload_part, [client, upload_id, bucket, object])
       |> Enum.to_list()
@@ -40,18 +40,13 @@ defmodule AWS.S3 do
       host: "#{bucket}.s3.#{client.endpoint}",
       path: "#{object}",
       method: :post,
-      headers: [
-        {"x-amz-content-sha256", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
-      ],
       query_params: [
         {"uploads", ""}
       ],
       payload: "",
       parser: &Parsers.parse_initiate_multipart_upload/1
     }
-    request
-    |> AWS.sign_v4(client, [hashed: true])
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   def upload_part({src, index}, client, upload_id, bucket, object) do
@@ -64,8 +59,7 @@ defmodule AWS.S3 do
       headers: [
         {"content-encoding", "aws-chunked"},
         {"content-length", src|> byte_size() |> to_string() },
-        {"content-md5", md5_hash },
-        {"x-amz-content-sha256", src |> AWS.Util.hash() |> AWS.Util.hex_encode()}
+        {"content-md5", md5_hash }
       ],
       query_params: [
         {"partNumber", to_string(index)},
@@ -75,9 +69,7 @@ defmodule AWS.S3 do
     }
 
 
-    response = request
-    |> AWS.sign_v4(client, hashed: true)
-    |> AWS.request!(client, [timeout: :infinity, recv_timeout: :infinity])
+    response = request |> AWS.request!(client, [timeout: :infinity, recv_timeout: :infinity])
 
     {_, etag} = Enum.find(response.headers, fn {key, _} -> String.downcase(key) == "etag" end)
     {String.slice(etag, 1..-2), index}
@@ -102,50 +94,18 @@ defmodule AWS.S3 do
       path: "#{object}",
       method: :post,
       headers: [
-        {"content-length", payload |> byte_size() |> to_string() },
-        {"x-amz-content-sha256", payload |> AWS.Util.hash() |> AWS.Util.hex_encode() }
+        {"content-length", payload |> byte_size() |> to_string() }
       ],
       query_params: [
         {"uploadId", upload_id}
       ],
       payload: payload,
+      parser: &Parsers.parse_complete_multipart_upload/1
     }
 
-    request
-    |> AWS.sign_v4(client, hashed: true)
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
-  def file_stream(path, options \\ []), do: File.stream!(path, [], options[:chunk_size] || 5 * 1024 * 1024)
-end
-
-defmodule AWS.S3.Parsers do
-  import SweetXml, only: [sigil_x: 2]
-  def parse_object_acl(response) do
-    body = response.body |> SweetXml.xpath(~x"//AccessControlPolicy",
-      owner: [
-        ~x"./Owner",
-        id: ~x"./ID/text()"s,
-        name: ~x"./DisplayName/text()"s
-      ],
-      acl: [
-        ~x"./AccessControlList",
-        grant: [
-          ~x"./Grant/Grantee"l,
-          id: ~x"./ID/text()"s,
-          name: ~x"./DisplayName/text()"s
-        ]
-      ]
-    )
-    %{response | body: body}
-  end
-
-  def parse_initiate_multipart_upload(response) do
-    body = response.body |> SweetXml.xpath(~x"//InitiateMultipartUploadResult",
-      bucket: ~x"./Bucket/text()"s,
-      key: ~x"./Key/text()"s,
-      upload_id: ~x"./UploadId/text()"s
-    )
-    %{response | body: body}
-  end
+  defp get_stream(path, :file, chunk_size), do: File.stream!(path, [], chunk_size)
+  defp get_stream(text, :text, chunk_size), do: slice_as_binary(text, chunk_size)
 end
