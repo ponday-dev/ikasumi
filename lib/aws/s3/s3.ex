@@ -100,6 +100,7 @@ defmodule AWS.S3 do
         {"uploadId", upload_id}
       ],
       payload: payload,
+      parser: &Parsers.parse_complete_multipart_upload/1
     }
 
     request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])

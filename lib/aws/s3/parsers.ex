@@ -27,4 +27,16 @@ defmodule AWS.S3.Parsers do
     )
     %{response | body: body}
   end
+
+  def parse_complete_multipart_upload(response) do
+    body = response.body |> SweetXml.xpath(~x"//CompleteMultipartUploadResult",
+      location: ~x"./Location/text()"s,
+      bucket: ~x"./Bucket/text()"s,
+      key: ~x"./Key/text()"s,
+      etag: ~x"./ETag/text()"s
+    )
+    body |> inspect() |> IO.puts
+    %{response | body: %{body | etag: String.slice(body.etag, 1..-2)}}
+  end
+
 end
