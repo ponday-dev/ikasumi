@@ -25,13 +25,13 @@ defmodule AWS.Request.Signer.Internal do
 
   def put_amz_datetime(%Request{} = request, datetime), do: %{request | datetime: to_amz_datetime(datetime)}
 
-  def put_hashed_payload(%Request{payload: nil} = request), do: do_put_hashed_hashed_payload(%{request | payload: ""})
+  def put_hashed_payload(%Request{payload: nil} = request), do: do_put_hashed_payload(%{request | payload: ""})
   def put_hashed_payload(%Request{} = request), do: do_put_hashed_payload(request)
 
   defp do_put_hashed_payload(%Request{} = request), do: %{request | hashed_payload: request.payload |> hash() |> hex_encode()}
 
   def put_headers(%Request{} = request) do
-    %{request | headers: [{"host", request.host}, {"x-amz-date", request.datetime}]}
+    %{request | headers: [{"host", request.host}, {"x-amz-date", request.datetime} | request.headers]}
   end
 
   def put_sha256_header(%Request{service: "s3"} = request) do
@@ -40,19 +40,20 @@ defmodule AWS.Request.Signer.Internal do
   def put_sha256_header(%Request{} = request), do: request
 
   def put_security_header(%Request{} = request, %Client{credentials: nil}), do: request
-  def put_security_header(%Request{} = request, %Client{ credentials: credentials}) do
+  def put_security_header(%Request{} = request, %Client{credentials: credentials}) do
     %{request | headers: [{"x-amz-security-token", Map.get(credentials, "SessionToken")} | request.headers]}
   end
 
   def hash_request(%Request{method: method} = request) when is_atom(method),
-    do: hash_request(%{request | method: Atom.to_string(method), else: method) |> String.upcase()})
+    do: hash_request(%{request | method: Atom.to_string(method) |> String.upcase()})
   def hash_request(%Request{} = request), do: %{request | hashed_request: do_hash_request(request)}
   defp do_hash_request(%Request{} = request) do
     [
       request.method, "\n",
       URI.encode(request.path), "\n",
+      URI.encode_query(request.query_params), "\n",
       canonical_headers(request.headers), "\n\n",
-      signed_headers(headers), "\n",
+      signed_headers(request.headers), "\n",
       request.hashed_payload
     ]
     |> Enum.join("")
@@ -73,7 +74,7 @@ defmodule AWS.Request.Signer.Internal do
   def calc_credential_scope(%Request{} = request, %Client{} = client) do
     %{request | credential_scope: do_calc_credential_scope(request, client)}
   end
-  defp do_calc_redential_scope(%Request{} = request, %Client{region: region}) do
+  defp do_calc_credential_scope(%Request{} = request, %Client{region: region}) do
     [
       short_date(request.datetime),
       region,
@@ -83,7 +84,7 @@ defmodule AWS.Request.Signer.Internal do
     |> Enum.join("/")
   end
 
-  def calc_string_to_sign(%Request{} = request), do: %{request | calc_string_to_sign: do_string_to_sign(request)}
+  def calc_string_to_sign(%Request{} = request), do: %{request | string_to_sign: do_calc_string_to_sign(request)}
   defp do_calc_string_to_sign(%Request{} = request) do
     [
       "AWS4-HMAC-SHA256",
@@ -106,9 +107,13 @@ defmodule AWS.Request.Signer.Internal do
     |> hmac("aws4_request")
   end
 
-  def calc_signature(%Request{} = request), do: hmac(request.signing_key, request.string_to_sign) |> hex_encode()
+  def calc_signature(%Request{} = request), do: %{request | signature: do_calc_signature(request)}
+  defp do_calc_signature(%Request{} = request), do: hmac(request.signing_key, request.string_to_sign) |> hex_encode()
 
   def put_authorization_header(%Request{} = request, %Client{} = client) do
+    %{request | headers: [{"Authorization", do_put_authorization_header(request, client)} | request.headers]}
+  end
+  defp do_put_authorization_header(%Request{} = request, %Client{} = client) do
     [
       "AWS4-HMAC-SHA256 Credential=#{client.access_key}/#{request.credential_scope}",
       "SignedHeaders=#{signed_headers(request.headers)}",

@@ -10,7 +10,7 @@ defmodule AWS.Request do
     headers: [],
     query_params: [],
     payload: "",
-    parser: &identity/1
+    parser: &identity/1,
     datetime: nil,
     hashed_payload: nil,
     hashed_request: nil,

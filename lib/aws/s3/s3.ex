@@ -19,7 +19,7 @@ defmodule AWS.S3 do
   end
 
   def upload(client, filepath, bucket, object) do
-    with {:ok, %{payload: %{upload_id: upload_id}}} <- initiate_multipart_upload(client, bucket, object) do
+    with {:ok, %{body: %{upload_id: upload_id}}} <- initiate_multipart_upload(client, bucket, object) do
       file_stream(filepath)
       |> Stream.with_index(1)
       |> Task.async_stream(AWS.S3, :upload_part, [client, upload_id, bucket, object])
@@ -106,7 +106,7 @@ end
 defmodule AWS.S3.Parsers do
   import SweetXml, only: [sigil_x: 2]
   def parse_object_acl(response) do
-    payload = response.payload |> SweetXml.xpath(~x"//AccessControlPolicy",
+    body = response.body |> SweetXml.xpath(~x"//AccessControlPolicy",
       owner: [
         ~x"./Owner",
         id: ~x"./ID/text()"s,
@@ -121,15 +121,15 @@ defmodule AWS.S3.Parsers do
         ]
       ]
     )
-    %{response | payload: payload}
+    %{response | body: body}
   end
 
   def parse_initiate_multipart_upload(response) do
-    payload = response.payload |> SweetXml.xpath(~x"//InitiateMultipartUploadResult",
+    body = response.body |> SweetXml.xpath(~x"//InitiateMultipartUploadResult",
       bucket: ~x"./Bucket/text()"s,
       key: ~x"./Key/text()"s,
       upload_id: ~x"./UploadId/text()"s
     )
-    %{response | payload: payload}
+    %{response | body: body}
   end
 end
