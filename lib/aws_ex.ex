@@ -22,7 +22,7 @@ defmodule AWS do
     end
   end
 
-  def get_credentials(client, identity_id), do:
+  def get_credentials(client, identity_id) do
     with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, identity_id) do
       update_client(client, credentials)
     end
