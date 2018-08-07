@@ -38,6 +38,26 @@ defmodule AWS.S3 do
     |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
+  @doc """
+  # S3 file upload.
+    When the same name object exists, this function will work as update action.
+
+  ## Parameters
+    - client: The authenticated AWS.Client object.
+    - mode: Source type
+      - :file　Upload src as file path string.
+      - :text Upload src as raw string.
+    - src: Source data
+    - bucket: The bucket name of upload target.
+    - object: The name of upload object.
+    - options: (Optional) Upload options.
+      - :chunk_size The chunk size when upload with splitted binaries.(default: 5MB = 5 * 1024 * 1024)
+
+  ## Example
+    client
+    |> AWS.get_credentials(identity_id)
+    |> AWS.S3.upload(:text, "{\"foo\": 1}", "examplebucket", "example.json")
+  """
   def upload(client, mode, src, bucket, object, options \\ []) do
     get_stream(src, mode, options[:chunk_size] || 5 * 1024 * 1024) |> upload_stream(client, bucket, object)
   end
