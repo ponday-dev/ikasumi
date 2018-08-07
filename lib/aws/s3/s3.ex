@@ -20,7 +20,13 @@ defmodule AWS.S3 do
   end
 
   def download(client, bucket, object, range \\ nil) do
-    headers = if {begin, length} = range, do: [{"range", "bytes=#{begin}-#{begin + length - 1}"}], else: []
+    headers =
+      case range do
+        {begin, len} ->
+          [{"range", "bytes=#{begin}-#{begin + len - 1}"}]
+        _ ->
+          []
+      end
     %AWS.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
