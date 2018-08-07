@@ -19,12 +19,14 @@ defmodule AWS.S3 do
     request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
-  def download(client, bucket, object) do
+  def download(client, bucket, object, range \\ nil) do
+    headers = if {begin, length} = range, do: [{"range", "bytes=#{begin}-#{begin + length - 1}"}], else: []
     %AWS.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
       path: object,
       method: :get,
+      headers: headers,
       payload: ""
     }
     |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
