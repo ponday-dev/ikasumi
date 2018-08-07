@@ -19,6 +19,17 @@ defmodule AWS.S3 do
     request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
+  def download(client, bucket, object) do
+    %AWS.Request{
+      service: "s3",
+      host: "#{bucket}.s3.#{client.endpoint}",
+      path: object,
+      method: :get,
+      payload: ""
+    }
+    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+  end
+
   def upload(client, mode, src, bucket, object, options \\ []) do
     get_stream(src, mode, options[:chunk_size] || 5 * 1024 * 1024) |> upload_stream(client, bucket, object)
   end
