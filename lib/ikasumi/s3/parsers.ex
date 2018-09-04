@@ -1,4 +1,4 @@
-defmodule AWS.S3.Parsers do
+defmodule Ikasumi.S3.Parsers do
   import SweetXml, only: [sigil_x: 2]
   def parse_object_acl(response) do
     body = response.body |> SweetXml.xpath(~x"//AccessControlPolicy",

@@ -1,10 +1,10 @@
-defmodule AWS.S3 do
-  alias AWS.S3.Parsers
-  import AWS.Util, only: [slice_as_binary: 2]
+defmodule Ikasumi.S3 do
+  alias Ikasumi.S3.Parsers
+  import Ikasumi.Util, only: [slice_as_binary: 2]
 
   def get_object_acl(client, bucket, object) do
     # x-amz-content-sha256ヘッダの値は空文字をSHA256でハッシュ化して16進数化したもの
-    request = %AWS.Request{
+    request = %Ikasumi.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
       path: object,
@@ -16,7 +16,7 @@ defmodule AWS.S3 do
       parser: &Parsers.parse_object_acl/1
     }
 
-    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> Ikasumi.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   def download(client, bucket, object, range \\ nil) do
@@ -27,7 +27,7 @@ defmodule AWS.S3 do
         _ ->
           []
       end
-    %AWS.Request{
+    %Ikasumi.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
       path: object,
@@ -35,7 +35,7 @@ defmodule AWS.S3 do
       headers: headers,
       payload: ""
     }
-    |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    |> Ikasumi.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   @doc """
@@ -43,7 +43,7 @@ defmodule AWS.S3 do
     When the same name object exists, this function will work as update action.
 
   ## Parameters
-    - client: The authenticated AWS.Client object.
+    - client: The authenticated Ikasumi.Client object.
     - mode: Source type
       - :file　Upload src as file path string.
       - :binary Upload src as binary.
@@ -55,8 +55,8 @@ defmodule AWS.S3 do
 
   ## Example
     client
-    |> AWS.get_credentials(identity_id)
-    |> AWS.S3.upload(:binary, "{\"foo\": 1}", "examplebucket", "example.json")
+    |> Ikasumi.get_credentials(identity_id)
+    |> Ikasumi.S3.upload(:binary, "{\"foo\": 1}", "examplebucket", "example.json")
   """
   def upload(client, mode, src, bucket, object, options \\ []) do
     get_stream(src, mode, options[:chunk_size] || 5 * 1024 * 1024) |> upload_stream(client, bucket, object)
@@ -66,7 +66,7 @@ defmodule AWS.S3 do
     with {:ok, %{body: %{upload_id: upload_id}}} <- initiate_multipart_upload(client, bucket, object) do
       enumerable
       |> Stream.with_index(1)
-      |> Task.async_stream(AWS.S3, :upload_part, [client, upload_id, bucket, object])
+      |> Task.async_stream(Ikasumi.S3, :upload_part, [client, upload_id, bucket, object])
       |> Enum.to_list()
       |> Enum.map(fn {:ok, val} -> val end)
       |> complete_multipart_upload(client, upload_id, bucket, object)
@@ -74,7 +74,7 @@ defmodule AWS.S3 do
   end
 
   def initiate_multipart_upload(client, bucket, object) do
-    request = %AWS.Request{
+    request = %Ikasumi.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
       path: "#{object}",
@@ -85,12 +85,12 @@ defmodule AWS.S3 do
       payload: "",
       parser: &Parsers.parse_initiate_multipart_upload/1
     }
-    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> Ikasumi.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   def upload_part({src, index}, client, upload_id, bucket, object) do
     md5_hash = :crypto.hash(:md5, src) |> Base.encode64()
-    request = %AWS.Request{
+    request = %Ikasumi.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
       path: "#{object}",
@@ -108,7 +108,7 @@ defmodule AWS.S3 do
     }
 
 
-    response = request |> AWS.request!(client, [timeout: :infinity, recv_timeout: :infinity])
+    response = request |> Ikasumi.request!(client, [timeout: :infinity, recv_timeout: :infinity])
 
     {_, etag} = Enum.find(response.headers, fn {key, _} -> String.downcase(key) == "etag" end)
     {String.slice(etag, 1..-2), index}
@@ -127,7 +127,7 @@ defmodule AWS.S3 do
     |> Enum.join("\n")
     |> (fn tags -> "<CompleteMultipartUpload>#{tags}</CompleteMultipartUpload>" end).()
 
-    request = %AWS.Request{
+    request = %Ikasumi.Request{
       service: "s3",
       host: "#{bucket}.s3.#{client.endpoint}",
       path: "#{object}",
@@ -142,7 +142,7 @@ defmodule AWS.S3 do
       parser: &Parsers.parse_complete_multipart_upload/1
     }
 
-    request |> AWS.request(client, [timeout: :infinity, recv_timeout: :infinity])
+    request |> Ikasumi.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
   defp get_stream(path, :file, chunk_size), do: File.stream!(path, [], chunk_size)

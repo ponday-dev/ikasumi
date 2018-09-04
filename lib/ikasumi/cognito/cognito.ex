@@ -1,4 +1,4 @@
-defmodule AWS.Cognito do
+defmodule Ikasumi.Cognito do
   def get_credentials_for_identity(client, identity_id) do
     request(client, "/", "GetCredentialsForIdentity", %{ IdentityId: identity_id }) |> send_request(client)
   end
@@ -13,7 +13,7 @@ defmodule AWS.Cognito do
   end
 
   defp request(client, path, action, payload) do
-    %AWS.Request{
+    %Ikasumi.Request{
       service: "cognito-identity",
       host: "cognito-identity.#{client.region}.#{client.endpoint}",
       path: path,
@@ -27,7 +27,7 @@ defmodule AWS.Cognito do
   end
 
   defp send_request(request, client, options \\ []) do
-    case AWS.request(request, client, options) do
+    case Ikasumi.request(request, client, options) do
       {:ok, response=%HTTPoison.Response{status_code: 200, body: ""}} ->
         {:ok, nil, response}
       {:ok, response=%HTTPoison.Response{status_code: 200, body: body}} ->
