@@ -1,52 +1,19 @@
-# Elixir on Docker
+# Ikasumi
 
-Elixir + PhoenixをDockerで使うためのリポジトリ
+Elixir用のシンプルなAWSクライアントです。  
 
-# 使い方
+# Usage
 
-まずはイメージをビルド
+```elixir
+client =
+  %Ikasumi.Client {
+    access_key: "abcdefghijklmn",
+    secret_access_key: "opqrstuvwxyz",
+    region: "us-east-1",
+    endpoint: "amazonaws.com",
+    user_pool_id: "1234567890"
+  }
+  |> Ikasumi.Cognito.get_credentials_for_identity("abcdefg")
 
-```sh
-docker-compose build
+Ikasumi.S3.upload(client, :file, "sample.txt", "examplebucket", "sample.txt")
 ```
-
-プロジェクトを作成する
-
-```sh
-docker-compose run app /bin/bash -l "mix phx.new . --app <app_name> --database mysql"
-```
-
-データベースの定義を変更する。
-作成されたプロジェクトフォルダ内の、
-
-+ config/dev.exs
-+ config/prod.secret.exs
-
-に定義が書かれているので修正する。
-
-```yaml
-# Configure your database
-config :phoenix_sample, PhoenixSample.Repo,
-  adapter: Ecto.Adapters.MySQL,
-  username: "mariadb",
-  password: "p@ssw0rd",
-  database: "phoenixdb",
-  hostname: "mariadb",
-  port: 3306,
-  pool_size: 10
-```
-
-（検証時点ならprod.secret.exsの編集は不要。）
-
-データベースのセットアップ
-
-```sh
-docker-compose run app mix ecto.create
-```
-
-以下のコマンドでアプリを起動
-
-```sh
-docker-compose up
-```
-
