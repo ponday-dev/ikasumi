@@ -1,6 +1,6 @@
-defmodule AWS do
-  alias AWS.{Client, Request, Cognito}
-  alias AWS.Request.Signer
+defmodule Ikasumi do
+  alias Ikasumi.{Client, Request, Cognito}
+  alias Ikasumi.Request.Signer
 
   def request(%Request{} = request, %Client{} = client, options \\ []) do
     request = request

@@ -3,7 +3,7 @@ defmodule AWS.MixProject do
 
   def project do
     [
-      app: :aws_ex,
+      app: :ikasumi,
       version: "0.1.0",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,

@@ -1,6 +1,6 @@
-defmodule AWS.Request do
-  alias AWS.{Client, Request}
-  import AWS.Util, only: [identity: 1]
+defmodule Ikasumi.Request do
+  alias Ikasumi.{Client, Request}
+  import Ikasumi.Util, only: [identity: 1]
 
   defstruct [
     :service,
