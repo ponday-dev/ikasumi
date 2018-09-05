@@ -145,6 +145,17 @@ defmodule Ikasumi.S3 do
     request |> Ikasumi.request(client, [timeout: :infinity, recv_timeout: :infinity])
   end
 
+  def delete_object(client, bucket, object) do
+    %Ikasumi.Request{
+      service: "s3",
+      host: "#{bucket}.s3.#{client.endpoint}",
+      path: "#{object}",
+      method: :delete,
+      payload: ""
+    }
+    |> Ikasumi.request(client, [timeout: :infinity, recv_timeout: :infinity])
+  end
+
   defp get_stream(path, :file, chunk_size), do: File.stream!(path, [], chunk_size)
   defp get_stream(binary, :binary, chunk_size), do: slice_as_binary(binary, chunk_size)
 end
