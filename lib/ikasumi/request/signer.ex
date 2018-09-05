@@ -18,8 +18,6 @@ defmodule Ikasumi.Request.Signer do
       signing_key = Internal.signing_key(client.secret_access_key, amz_date, client.region, request.service)
       signature = Internal.signature(signing_key, string_to_sign)
 
-      IO.puts(hashed_request)
-
       %{request | headers: put_authorization_header(headers, client.access_key, credential_scope, signed_headers, signature)}
     end
   end
