@@ -7,6 +7,8 @@ defmodule Ikasumi.Client do
     proto: "https",
     port: 443,
     credentials: nil,
-    user_pool_id: ""
+    identity_pool_id: "",
+    user_pool_id: "",
+    account_id: ""
   ]
 end
