@@ -27,8 +27,8 @@ defmodule Ikasumi do
       update_client(client, credentials)
     end
   end
-  def get_credentials(client, identity_id, id_token) do
-    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, identity_id, id_token) do
+  def get_credentials(client, id_provider, identity_id, id_token) do
+    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, id_provider, identity_id, id_token) do
       update_client(client, credentials)
     end
   end
