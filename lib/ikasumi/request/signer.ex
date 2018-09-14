@@ -3,7 +3,7 @@ defmodule Ikasumi.Request.Signer do
   alias Ikasumi.Request.Signer.Internal
 
   def sign_v4(%Request{} = request, %Client{} = client, options \\ []), do: sign_v4(request, client, Timex.now(), options)
-  def sign_v4(%Request{} = request, %Client{} = client, datetime, options) do
+  def sign_v4(%Request{} = request, %Client{} = client, datetime, _) do
     with {:ok, amz_datetime} <- Internal.amz_datetime(datetime) do
 
       amz_date = Internal.amz_date(amz_datetime)
