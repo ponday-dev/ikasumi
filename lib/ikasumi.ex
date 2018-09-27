@@ -23,14 +23,14 @@ defmodule Ikasumi do
   end
 
   def get_credentials(client, identity_id) do
-    with {:ok, response} <- Cognito.get_credentials_for_identity(client, identity_id),
-         {:ok, %{body: %{"Credentials" => credentials}}} <- Poison.decode(response) do
+    with {:ok, %{status_code: 200, body: body}} <- Cognito.get_credentials_for_identity(client, identity_id),
+         {:ok, %{"Credentials" => credentials}} <- Poison.decode(body) do
       update_client(client, credentials)
     end
   end
   def get_credentials(client, id_provider, identity_id, id_token) do
-    with {:ok, response} <- Cognito.get_credentials_for_identity(client, id_provider, identity_id, id_token),
-         {:ok, %{body: %{"Credentials" => credentials}}} <- Poison.decode(response) do
+    with {:ok, %{status_code: 200, body: body}} <- Cognito.get_credentials_for_identity(client, id_provider, identity_id, id_token),
+         {:ok, %{"Credentials" => credentials}} <- Poison.decode(body) do
       update_client(client, credentials)
     end
   end
