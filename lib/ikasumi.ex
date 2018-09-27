@@ -17,18 +17,20 @@ defmodule Ikasumi do
     case request(request, client, options) do
       {:ok, response} ->
         response
-      {:err, response} ->
-        raise RuntimeError, message: inspect(response)
+      {:error, reason} ->
+        raise RuntimeError, message: inspect(reason)
     end
   end
 
   def get_credentials(client, identity_id) do
-    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, identity_id) do
+    with {:ok, response} <- Cognito.get_credentials_for_identity(client, identity_id),
+         {:ok, %{body: %{"Credentials" => credentials}}} <- Poison.decode(response) do
       update_client(client, credentials)
     end
   end
   def get_credentials(client, id_provider, identity_id, id_token) do
-    with {:ok, %{"Credentials" => credentials}, _}<- Cognito.get_credentials_for_identity(client, id_provider, identity_id, id_token) do
+    with {:ok, response} <- Cognito.get_credentials_for_identity(client, id_provider, identity_id, id_token),
+         {:ok, %{body: %{"Credentials" => credentials}}} <- Poison.decode(response) do
       update_client(client, credentials)
     end
   end

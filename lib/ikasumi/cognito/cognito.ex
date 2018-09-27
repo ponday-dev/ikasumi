@@ -1,6 +1,6 @@
 defmodule Ikasumi.Cognito do
   def get_credentials_for_identity(client, identity_id) do
-    request(client, "/", "GetCredentialsForIdentity", %{ IdentityId: identity_id }) |> send_request(client)
+    request(client, "/", "GetCredentialsForIdentity", %{ IdentityId: identity_id }) |> Ikasumi.request(client)
   end
   def get_credentials_for_identity(client, id_provider, identity_id, id_token) do
     payload = %{
@@ -9,7 +9,8 @@ defmodule Ikasumi.Cognito do
         provider(client, id_provider) => id_token
       }
     }
-    request(client, "/", "GetCredentialsForIdentity", payload) |> send_request(client)
+
+    request(client, "/", "GetCredentialsForIdentity", payload) |> Ikasumi.request(client)
   end
 
   def get_id(client, id_provider, token) do
@@ -19,10 +20,12 @@ defmodule Ikasumi.Cognito do
         provider(client, id_provider) => token
       }
     }
-    |> (fn body -> if %{account_id: ""} = client, do: body, else: %{body | "AccountId" => client.account_id} end).()
+    |> get_id_(client)
 
-    request(client, "/", "GetId", payload) |> send_request(client)
+    request(client, "/", "GetId", payload) |> Ikasumi.request(client)
   end
+  defp get_id_(payload, %{account_id: ""}), do: payload
+  defp get_id_(payload, %{account_id: account_id}), do: Map.put(payload, "AccountId", account_id)
 
   defp provider(_, :google), do: "accounts.google.com"
   defp provider(client, :cognito_user_pool), do: "cognito-idp.#{client.region}.amazonaws.com/#{client.user_pool_id}"
@@ -44,19 +47,4 @@ defmodule Ikasumi.Cognito do
     }
   end
 
-  defp send_request(request, client, options \\ []) do
-    case Ikasumi.request(request, client, options) do
-      {:ok, response=%HTTPoison.Response{status_code: 200, body: ""}} ->
-        {:ok, nil, response}
-      {:ok, response=%HTTPoison.Response{status_code: 200, body: body}} ->
-        {:ok, Poison.Parser.parse!(body), response}
-      {:ok, _response=%HTTPoison.Response{body: body}} ->
-        error = Poison.Parser.parse!(body)
-        exception = error["__type"]
-        message = error["message"]
-        {:error, {exception, message}}
-      {:error, %HTTPoison.Error{reason: reason}} ->
-        {:error, %HTTPoison.Error{reason: reason}}
-    end
-  end
 end
